@@ -24,7 +24,7 @@ class GaussianNoise:
 
 
 class ReplayMemory:
-    __slots__ = ['buffer']
+    __slots__ = ['buffer'] # tells python that 'buffer' is the only attribute that ReplayMemory can use
 
     def __init__(self, capacity):
         self.buffer = deque(maxlen=capacity)
@@ -38,9 +38,13 @@ class ReplayMemory:
 
     def sample(self, batch_size, device):
         '''sample a batch of transition tensors'''
-        ## TODO ##
-        raise NotImplementedError
-
+        transitions = random.sample(self.buffer, batch_size)
+        return (torch.tensor(x, dtype=float, device=device)
+                    for x in zip(*transitions)) 
+        # ex : transitions = [(1, 'a'), (2, 'b'), (3, 'c')]
+        # after for x in zip(*transitions)
+        # iter 1 : x = (1, 2, 3)
+        # iter 2 : x = ('a', 'b', 'c')
 
 class ActorNet(nn.Module):
     def __init__(self, state_dim=8, action_dim=2, hidden_dim=(400, 300)):
