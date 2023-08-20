@@ -49,8 +49,11 @@ class ReplayMemory:
 class ActorNet(nn.Module):
     def __init__(self, state_dim=8, action_dim=2, hidden_dim=(400, 300)):
         super().__init__()
-        ## TODO ##
-        raise NotImplementedError
+        self.fc1=nn.Linear(state_dim,hidden_dim[0])
+        self.fc2=nn.Linear(hidden_dim[0],hidden_dim[1])
+        self.fc3=nn.Linear(hidden_dim[1],action_dim)
+        self.relu=nn.ReLU()
+        self.tanh=nn.Tanh()
 
     def forward(self, x):
         ## TODO ##
