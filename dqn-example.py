@@ -37,7 +37,7 @@ class ReplayMemory:
 
 
 class Net(nn.Module):
-    def __init__(self, state_dim=8, action_dim=4, hidden_dim=(32, 32)):
+    def __init__(self, state_dim=8, action_dim=4, hidden_dim=(400, 300)):
         super().__init__()
         self.fc1 = nn.Linear(state_dim, hidden_dim[0])
         self.fc2 = nn.Linear(hidden_dim[0], hidden_dim[1])
@@ -151,7 +151,7 @@ def train(args, env, agent, writer):
     print('Start Training')
     action_space = env.action_space
     # 1 step means 1 
-    total_steps, epsilon = 0, 1.
+    total_steps, epsilon = 0, args.epsilon
     ewma_reward = 0
     for episode in range(args.episode):
         total_reward = 0
@@ -244,6 +244,7 @@ def main():
     parser.add_argument('--capacity', default=10000, type=int)
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--lr', default=.0005, type=float)
+    parser.add_argument('--epsilon', default=1., type=float)
     parser.add_argument('--eps_decay', default=.995, type=float)
     parser.add_argument('--eps_min', default=.01, type=float)
     parser.add_argument('--gamma', default=.99, type=float)
@@ -260,11 +261,13 @@ def main():
     env = gym.make('LunarLander-v2')
     agent = DQN(args)
     writer = SummaryWriter(args.logdir)
-    model_path = f'dqn_ep={args.episode}.pth'
+    # read_model_path = 'dqn_ep=300.pth'
+    write_model_path = f'dqn_ep={args.episode}.pth'
     if not args.test_only:
+        # agent.load(model_path=read_model_path, checkpoint=True)
         train(args, env, agent, writer)
-        agent.save(model_path, checkpoint=True)
-    agent.load(model_path)
+        agent.save(write_model_path, checkpoint=True)
+    agent.load(model_path=write_model_path)
     test(args, env, agent, writer)
 
 
