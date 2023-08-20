@@ -6,6 +6,7 @@ from collections import deque
 import itertools
 import random
 import time
+import matplotlib.pyplot as plt
 
 import gym
 import numpy as np
@@ -13,7 +14,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-
 
 
 class ReplayMemory:
@@ -27,40 +27,40 @@ class ReplayMemory:
 
     def append(self, *transition):
         # (state, action, reward, next_state, done)
-        self.buffer.append(tuple(map(tuple, transition))) # use map to transform element of transition into tuple
+        self.buffer.append(tuple(map(tuple, transition)))
 
     def sample(self, batch_size, device):
         '''sample a batch of transition tensors'''
-        transitions = random.sample(self.buffer, batch_size) # choose {batch_size} samples from buffer
+        transitions = random.sample(self.buffer, batch_size)
         return (torch.tensor(x, dtype=torch.float, device=device)
                 for x in zip(*transitions))
 
 
 class Net(nn.Module):
-    def __init__(self, state_dim=8, action_dim=4, hidden_dim=(32, 32)):
+    def __init__(self, state_dim=8, action_dim=4, hidden_dim=(400,300)):
         super().__init__()
-        self.fc1 = nn.Linear(state_dim, hidden_dim[0])
-        self.fc2 = nn.Linear(hidden_dim[0], hidden_dim[1])
-        self.fc3 = nn.Linear(hidden_dim[1], action_dim)
-        self.relu = nn.ReLU()
+        ## TODO ##
+        self.fc1=nn.Linear(state_dim,hidden_dim[0])
+        self.fc2=nn.Linear(hidden_dim[0],hidden_dim[1])
+        self.fc3=nn.Linear(hidden_dim[1],action_dim)
+        self.relu=nn.ReLU()
 
     def forward(self, x):
-        out = self.relu(self.fc1(x))
-        out = self.relu(self.fc2(out))
-        out = self.fc3(out)
+        ## TODO ##
+        out=self.relu(self.fc1(x))
+        out=self.relu(self.fc2(out))
+        out=self.fc3(out)
         return out
 
 class DQN:
     def __init__(self, args):
-        # behavior net choose action with given state 
         self._behavior_net = Net().to(args.device)
         self._target_net = Net().to(args.device)
         # initialize target network
-        # target network evaluate target Q value, it can not choose action directly  
-        # target network offer a steady Q value 
-        self._target_net.load_state_dict(self._behavior_net.state_dict()) 
-        # first param of Adam means the params that need to 
-        self._optimizer = optim.Adam(self._behavior_net.parameters(), lr=args.lr)
+        self._target_net.load_state_dict(self._behavior_net.state_dict())
+        ## TODO ##
+        self._optimizer = optim.Adam(self._behavior_net.parameters(),lr=args.lr)
+
         # memory
         self._memory = ReplayMemory(capacity=args.capacity)
 
@@ -68,31 +68,27 @@ class DQN:
         self.device = args.device
         self.batch_size = args.batch_size
         self.gamma = args.gamma
-        self.freq = args.freq # update behavior network every self.freq iteration
-        self.target_freq = args.target_freq # update target network every self.target_freq iteration
+        self.freq = args.freq   # update behavior network every 4 iterations
+        self.target_freq = args.target_freq    # update behavior network every 1000 iterations
 
     def select_action(self, state, epsilon, action_space):
         '''epsilon-greedy based on behavior network'''
-        # we have epsilon prob to randomly choose action
-        if random.random() < epsilon: # expore
+         ## TODO ##
+        if random.random() < epsilon:  # explore
             return action_space.sample()
-        else: # exploit 
+        else: # exploit
             with torch.no_grad():
-                # view(batch_size, n), if n=-1, output=[batch_size, product of all dimension]
-                # q_values is (batch_size x action)
-                q_values = self._behavior_net(torch.from_numpy(state).view(1, -1).to(self.device))
-                # print(f'Shape of q_values : {q_values}')
-                # dim=0 : compare between channel, dim=1 : compare between row, dim=2 : compare between col
-                # max: return [max value, max idx]
-                actions = q_values.max(dim=1)[1].item()
-        return actions
+                # t.max(1) will return largest column value of each row.
+                # second column on max result is index of where max element was
+                # found, so we pick action with the larger expected reward.
+                return self._behavior_net(torch.from_numpy(state).view(1,-1).to(self.device)).max(dim=1)[1].item()
+
+
     def append(self, state, action, reward, next_state, done):
-        self._memory.append(state, [action], [reward / 10], next_state, # reduce value of reward, avoid gradient explosion
+        self._memory.append(state, [action], [reward / 10], next_state,
                             [int(done)])
 
     def update(self, total_steps):
-        # print(self._memory.sample(
-        #     self.batch_size, self.device))
         if total_steps % self.freq == 0:
             self._update_behavior_network(self.gamma)
         if total_steps % self.target_freq == 0:
@@ -100,23 +96,16 @@ class DQN:
 
     def _update_behavior_network(self, gamma):
         # sample a minibatch of transitions
-        samples = self._memory.sample(
-            self.batch_size, self.device)
-        # each data in samples will show up in order of (state, action, reward, next_state, done)
-        # for data in samples:
-        #     print(f'Sample : {data}')
-        (state, action, reward, next_state, done) = self._memory.sample(
-            self.batch_size, self.device)
-        # _behavior_net returns batch_size x num_actions
-        q_value = self._behavior_net(state).gather(dim=1, index=action.long())
+        state, action, reward, next_state, done = self._memory.sample(self.batch_size, self.device)
+        ## TODO ##
+        q_value = self._behavior_net(state).gather(dim=1,index=action.long())
         with torch.no_grad():
-            # shape of q_next is (batch_size x 1)
-            q_next = self._target_net(next_state).max(dim=1)[0].view(-1, 1) # -1 means flatten the tensor, and the last dimensio=1
+            q_next = self._target_net(next_state).max(dim=1)[0].view(-1,1)
             q_target = reward + gamma*q_next*(1-done)
-        criterion = nn.MSELoss() # loss of DQN is base on MSE
+        criterion = nn.MSELoss()
         loss = criterion(q_value, q_target)
-        
-        # update network, back propagation, optimize
+
+        # bp
         self._optimizer.zero_grad()
         loss.backward()
         nn.utils.clip_grad_norm_(self._behavior_net.parameters(), 5)
@@ -124,7 +113,9 @@ class DQN:
 
     def _update_target_network(self):
         '''update target network by copying from behavior network'''
+        ## TODO ##
         self._target_net.load_state_dict(self._behavior_net.state_dict())
+
 
     def save(self, model_path, checkpoint=False):
         if checkpoint:
@@ -150,37 +141,25 @@ class DQN:
 def train(args, env, agent, writer):
     print('Start Training')
     action_space = env.action_space
-    # 1 step means 1 
     total_steps, epsilon = 0, 1.
     ewma_reward = 0
     for episode in range(args.episode):
         total_reward = 0
-        state = env.reset() # reset env into intial status 
-        # in every epoch, there is 1 simulation, terminates when condition reached
+        state = env.reset()
         epsilon = max(epsilon * args.eps_decay, args.eps_min)
-        for t in itertools.count(start=1): # use for time counting, default step=1
-            if t == 1:
-                state = state[0]
-
-            # select action 
-            if total_steps < args.warmup: # adopt random action 
+        for t in itertools.count(start=1):  # play an episode
+            # select action
+            if total_steps < args.warmup:
                 action = action_space.sample()
-            else: # choose action based on epilson greedy
+            else:
                 action = agent.select_action(state, epsilon, action_space)
             # execute action
-            next_state, reward, done, truncated, info = env.step(action)
+            next_state, reward, done, _ = env.step(action)
+
             # store transition
-            # print(f'state : {state}, action : {action}, reward : {reward}')
-            # print(f'next_state : {next_state}, done : {done}')
-            # print(f't:{t}, State : {state}')
-            # state = torch.tensor(state, dtype=torch.float)
-            # state = tuple(state[0])
-            # float_state = (float(x) for x in state)
-            # print(f't:{t}, next_state : {next_state}')
-            # next_state = tuple(next_state[0])
-            # float_next_state = (float(x) for x in next_state[0])
-            # agent.append(float_state, float(action), float(reward), float_next_state, float(done))
             agent.append(state, action, reward, next_state, done)
+
+            # update
             if total_steps >= args.warmup:
                 agent.update(total_steps)
 
@@ -188,15 +167,10 @@ def train(args, env, agent, writer):
             total_reward += reward
             total_steps += 1
             if done:
-                # EWMA : Exponential Weighted Moving Average Reward
-                # give history reward more weight, reduce the oscillate of reward curve
-                ewma_reward = 0.05 * total_reward + (1 - 0.05) * ewma_reward 
+                ewma_reward = 0.05 * total_reward + (1 - 0.05) * ewma_reward
                 writer.add_scalar('Train/Episode Reward', total_reward, total_steps)
                 writer.add_scalar('Train/Ewma Reward', ewma_reward, total_steps)
-                print(
-                    'Step: {}\tEpisode: {}\tLength: {:3d}\tTotal reward: {:.2f}\tEwma reward: {:.2f}\tEpsilon: {:.3f}'
-                    .format(total_steps, episode, t, total_reward, ewma_reward,
-                            epsilon))
+                print(f'Step: {total_steps}\tEpisode: {episode}\tLength: {t:3d}\tTotal reward: {total_reward:.2f}\tEwma reward: {ewma_reward:.2f}\tEpsilon: {epsilon:.3f}')
                 break
     env.close()
 
@@ -205,29 +179,29 @@ def test(args, env, agent, writer):
     print('Start Testing')
     action_space = env.action_space
     epsilon = args.test_epsilon
-    seeds = (args.seed + i for i in range(10)) # use random seed to ensure the variaty of env
+    seeds = (args.seed + i for i in range(10))
     rewards = []
-    # test for each seed
     for n_episode, seed in enumerate(seeds):
         total_reward = 0
-        # env.seed(seed)
-        state = env.reset(seed=seed)
-        for t in itertools.count(start=1): # start 1 epoch
-            # env.render() # show the progress of play
-            print(f'episode={n_episode}, t : {t}')
-            if t == 1:
-                state = state[0]
+        env.seed(seed)
+        state = env.reset()
+        ## TODO ##
+        for t in itertools.count(start=1):  # play an episode
+            env.render()
+            # select action
             action = agent.select_action(state, epsilon, action_space)
-            next_state, reward, done, _, _ = env.step(action)
-            
+            # execute action
+            next_state, reward, done, _ = env.step(action)
+
             state = next_state
             total_reward += reward
+
             if done:
                 writer.add_scalar('Test/Episode Reward', total_reward, n_episode)
-                print(f'Step : {t}, total reward : {total_reward}')
+                print(f'total reward: {total_reward:.2f}')
                 rewards.append(total_reward)
                 break
-            
+
     print('Average Reward', np.mean(rewards))
     env.close()
 
@@ -236,19 +210,19 @@ def main():
     ## arguments ##
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('-d', '--device', default='cuda')
-    parser.add_argument('-m', '--model', default='dqn.pth')
+    parser.add_argument('-m', '--model', default='dqn.pth')      # model path
     parser.add_argument('--logdir', default='log/dqn')
     # train
     parser.add_argument('--warmup', default=10000, type=int)
-    parser.add_argument('--episode', default=1200, type=int)
+    parser.add_argument('--episode', default=2000, type=int)#1200
     parser.add_argument('--capacity', default=10000, type=int)
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--lr', default=.0005, type=float)
     parser.add_argument('--eps_decay', default=.995, type=float)
-    parser.add_argument('--eps_min', default=.01, type=float)
+    parser.add_argument('--eps_min', default=.01, type=float)    # eps from 1.0 ~ 0.01
     parser.add_argument('--gamma', default=.99, type=float)
-    parser.add_argument('--freq', default=4, type=int)
-    parser.add_argument('--target_freq', default=100, type=int)
+    parser.add_argument('--freq', default=4, type=int)           # update behavior network every 4 iterations
+    parser.add_argument('--target_freq', default=1000, type=int) # update target network every 1000 iterations
     # test
     parser.add_argument('--test_only', action='store_true')
     parser.add_argument('--render', action='store_true')
@@ -260,11 +234,12 @@ def main():
     env = gym.make('LunarLander-v2')
     agent = DQN(args)
     writer = SummaryWriter(args.logdir)
-    model_path = f'dqn_ep={args.episode}.pth'
-    if not args.test_only:
-        train(args, env, agent, writer)
-        agent.save(model_path, checkpoint=True)
-    agent.load(model_path)
+
+    # if not args.test_only:
+    #     train(args, env, agent, writer)
+    #     agent.save(args.model,checkpoint=True)
+
+    agent.load(args.model,checkpoint=True)
     test(args, env, agent, writer)
 
 
