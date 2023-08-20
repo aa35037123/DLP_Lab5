@@ -159,16 +159,16 @@ def train(args, env, agent, writer):
         # in every epoch, there is 1 simulation, terminates when condition reached
         epsilon = max(epsilon * args.eps_decay, args.eps_min)
         for t in itertools.count(start=1): # use for time counting, default step=1
-            if t == 1:
-                state = state[0]
-
+            # if t == 1:
+            #     state = state[0]
+            # print(f't : {t}, state : {state}')
             # select action 
             if total_steps < args.warmup: # adopt random action 
                 action = action_space.sample()
             else: # choose action based on epilson greedy
                 action = agent.select_action(state, epsilon, action_space)
             # execute action
-            next_state, reward, done, truncated, info = env.step(action)
+            next_state, reward, done, truncated = env.step(action)
             # store transition
             # print(f'state : {state}, action : {action}, reward : {reward}')
             # print(f'next_state : {next_state}, done : {done}')
@@ -210,15 +210,17 @@ def test(args, env, agent, writer):
     # test for each seed
     for n_episode, seed in enumerate(seeds):
         total_reward = 0
-        # env.seed(seed)
-        state = env.reset(seed=seed)
+        env.seed(seed)
+        state = env.reset()
         for t in itertools.count(start=1): # start 1 epoch
             # env.render() # show the progress of play
             print(f'episode={n_episode}, t : {t}')
-            if t == 1:
-                state = state[0]
+            # if t == 1:
+            #     state = state[0]
+            
+            # print(f't : {t}, state : {state}')    
             action = agent.select_action(state, epsilon, action_space)
-            next_state, reward, done, _, _ = env.step(action)
+            next_state, reward, done, _ = env.step(action)
             
             state = next_state
             total_reward += reward
