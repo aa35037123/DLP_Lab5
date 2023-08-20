@@ -42,7 +42,7 @@ class Net(nn.Module):
                                         nn.Conv2d(32, 64, kernel_size=4, stride=2),
                                         nn.ReLU(True),
                                         nn.Conv2d(64, 64, kernel_size=3, stride=1),
-                                 nn.ReLU(True)
+                                        nn.ReLU(True)
                                         )
         self.classifier = nn.Sequential(nn.Linear(7*7*64, 512),
                                         nn.ReLU(True),
