@@ -11,6 +11,7 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -49,12 +50,18 @@ class ReplayMemory:
 class ActorNet(nn.Module):
     def __init__(self, state_dim=8, action_dim=2, hidden_dim=(400, 300)):
         super().__init__()
-        ## TODO ##
-        raise NotImplementedError
+        self.fc1 = nn.Linear(state_dim, hidden_dim[0])
+        self.fc2=nn.Linear(hidden_dim[0],hidden_dim[1])
+        self.fc3=nn.Linear(hidden_dim[1],action_dim)
+        self.relu=nn.ReLU()
+        self.tanh=nn.Tanh() 
+
 
     def forward(self, x):
-        ## TODO ##
-        raise NotImplementedError
+        out=self.relu(self.fc1(x))
+        out=self.relu(self.fc2(out))
+        out=self.tanh(self.fc3(out)) # tanh's range : [-1, 1], is suite for continuous action chosen
+        return out
 
 
 class CriticNet(nn.Module):
@@ -87,10 +94,10 @@ class DDPG:
         # initialize target network
         self._target_actor_net.load_state_dict(self._actor_net.state_dict())
         self._target_critic_net.load_state_dict(self._critic_net.state_dict())
-        ## TODO ##
-        # self._actor_opt = ?
-        # self._critic_opt = ?
-        raise NotImplementedError
+
+        self._actor_opt = optim.Adam(self._actor_net.parameters(), lr=args.lra)
+        self._critic_opt = optim.Adam(self._critic_net.parameters(),lr=args.lrc)
+        
         # action noise
         self._action_noise = GaussianNoise(dim=2)
         # memory
@@ -104,9 +111,9 @@ class DDPG:
 
     def select_action(self, state, noise=True):
         '''based on the behavior (actor) network and exploration noise'''
-        ## TODO ##
-        raise NotImplementedError
-
+        with torch.no_grad():
+            if noise: # noise's xrange : [-1, 1], 0 is False, not 0 is True
+                re = self._actor_net(torch.from_numpy(state).view(1, -1).to)
     def append(self, state, action, reward, next_state, done):
         self._memory.append(state, action, [reward / 100], next_state,
                             [int(done)])
