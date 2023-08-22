@@ -248,6 +248,7 @@ def train(args, env, agent, writer):
                     .format(total_steps, episode, t, total_reward,
                             ewma_reward))
                 break
+        
     env.close()
 
 
