@@ -57,7 +57,6 @@ class ActorNet(nn.Module):
         self.relu=nn.ReLU()
         self.tanh=nn.Tanh() 
 
-
     def forward(self, x):
         out=self.relu(self.fc1(x))
         out=self.relu(self.fc2(out))
