@@ -111,7 +111,7 @@ class DQN:
         q_value = self._behavior_net(state).gather(dim=1, index=action.long())
         with torch.no_grad():
             # shape of q_next is (batch_size x 1)
-            q_next = self._target_net(next_state).max(dim=1)[0].view(-1, 1) # -1 means flatten the tensor, and the last dimensio=1
+            q_next = self._target_net(next_state).max(dim=1)[0].view(-1, 1) # -1 means flatten the tensor, and the last dimension=1
             q_target = reward + gamma*q_next*(1-done)
         criterion = nn.MSELoss() # loss of DQN is base on MSE
         loss = criterion(q_value, q_target)
